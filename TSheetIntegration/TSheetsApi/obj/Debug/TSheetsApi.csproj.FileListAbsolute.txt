@@ -1,0 +1,9 @@
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\TSheetsApi.dll
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\TSheetsApi.pdb
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csprojAssemblyReference.cache
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csproj.CoreCompileInputs.cache
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.dll
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.pdb
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.dll
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.xml
+C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csproj.CopyComplete
