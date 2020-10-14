@@ -7,3 +7,12 @@ C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.p
 C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.dll
 C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.xml
 C:\Users\CHIRAG\source\repos\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csproj.CopyComplete
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\bin\Debug\TSheetsApi.dll
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\bin\Debug\TSheetsApi.pdb
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.dll
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\bin\Debug\Newtonsoft.Json.xml
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csprojAssemblyReference.cache
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csproj.CoreCompileInputs.cache
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.csproj.CopyComplete
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.dll
+F:\ASW\Clients\Sanjay\TSheetSP\Solution\TSheetToSP2\TSheetIntegration\TSheetsApi\obj\Debug\TSheetsApi.pdb
