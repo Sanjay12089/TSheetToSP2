@@ -69,9 +69,9 @@ namespace TSheetIntegration
 
             var filters = new Dictionary<string, string>();
             filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
-            filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
+            //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
+            filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
             var timesheetData = tsheetsApi.Get(ObjectType.Timesheets, filters);
-
             var timesheetsObject = JObject.Parse(timesheetData);
             var allTimeSheets = timesheetsObject.SelectTokens("results.timesheets.*");
             var supplemental_data = timesheetsObject.SelectTokens("supplemental_data.jobcodes.*");
@@ -256,7 +256,7 @@ namespace TSheetIntegration
         {
             ClientContext clientContext = new ClientContext(siteUrl);
 
-            List oList = clientContext.Web.Lists.GetByTitle("Tasks");
+            List oList = clientContext.Web.Lists.GetByTitle("Schedule");
 
             CamlQuery camlQuery = new CamlQuery();
             ListItemCollection collListItem = oList.GetItems(camlQuery);
@@ -330,7 +330,7 @@ namespace TSheetIntegration
 
             foreach (ListItem oListItem in collListItem)
             {
-                if (oListItem.Client_Title == taskName)
+                if (oListItem["Title"] == taskName)
                 {
                     ListItemCreationInformation itemInfo = new ListItemCreationInformation();
                     ListItem myItem = oList.AddItem(itemInfo);
