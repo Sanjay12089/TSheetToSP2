@@ -11,6 +11,8 @@ using TSheetsApi;
 using Microsoft.SharePoint;
 using Microsoft.SharePoint.Client;
 using System.Security;
+using System.Drawing.Drawing2D;
+using Microsoft.ProjectServer.Client;
 
 namespace TSheetIntegration
 {
@@ -78,9 +80,26 @@ namespace TSheetIntegration
             List<SupplementalData> supplementalData = new List<SupplementalData>();
 
             //NOTE: Fetch all timesheet data
+            int count = 0;
             foreach (var timesheet in allTimeSheets)
             {
                 allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
+                int cs = 0;
+                foreach (var item in timesheet["customfields"])
+                {
+                    if (cs == 0)
+                        allTimeSheetData[count].customfields.FirstColumn = item.First.ToString();
+                    if (cs == 1)
+                        allTimeSheetData[count].customfields.SecondColumn = item.First.ToString();
+                    if (cs == 2)
+                        allTimeSheetData[count].customfields.ThirdColumn = item.First.ToString();
+                    if (cs == 3)
+                        allTimeSheetData[count].customfields.FourthColumn = item.First.ToString();
+                    if (cs == 4)
+                        allTimeSheetData[count].customfields.FifthColumn = item.First.ToString();
+                    cs++;
+                }
+                count++;
             }
 
             //NOTE: Fetch all supplement data
@@ -97,68 +116,75 @@ namespace TSheetIntegration
                 securePassword.AppendChar(c);
             }
 
-            foreach (var sd in allTimeSheetData)
+            foreach (var td in allTimeSheetData)
             {
-                if (supplementalData.Where(x => x.id == sd.jobcode_id).Select(x => x.project_id).ToList().Count > 0)
+                List<SupplementalData> spItem = supplementalData.Where(x => x.id == td.jobcode_id).ToList();
+                if (spItem.Count > 0)
                 {
-                    long project_id = supplementalData.Where(x => x.id == sd.jobcode_id).Select(x => x.project_id).FirstOrDefault();
+                    long project_id = supplementalData.Where(x => x.id == td.jobcode_id).Select(x => x.project_id).FirstOrDefault();
                     if (project_id > 0)
                     {
-                        string siteUrl = ConfigurationManager.AppSettings.Get("sharepoint_SiteUrl");
-                        ClientContext clientContext = new ClientContext(siteUrl);
-                        List myList = clientContext.Web.Lists.GetByTitle(ConfigurationManager.AppSettings.Get("sharepoint_ListName"));
+                        #region trial tenant list
+
+                        //string siteUrl = ConfigurationManager.AppSettings.Get("sharepoint_SiteUrl");
+                        //ClientContext clientContext = new ClientContext(siteUrl);
+                        //List myList = clientContext.Web.Lists.GetByTitle(ConfigurationManager.AppSettings.Get("sharepoint_ListName"));
 
                         //NOTE: Check if project id is available in list
-                        TimeSpan duration = new TimeSpan();
-                        if (!string.IsNullOrWhiteSpace(sd.duration))
-                        {
-                            duration = TimeSpan.FromSeconds(Convert.ToInt64(sd.duration));
+                        //TimeSpan duration = new TimeSpan();
+                        //if (!string.IsNullOrWhiteSpace(sd.duration))
+                        //{
+                        //    duration = TimeSpan.FromSeconds(Convert.ToInt64(sd.duration));
 
-                            string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-                                            duration.Hours,
-                                            duration.Minutes,
-                                            duration.Seconds,
-                                            duration.Milliseconds);
-                        }
+                        //    string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                        //                    duration.Hours,
+                        //                    duration.Minutes,
+                        //                    duration.Seconds,
+                        //                    duration.Milliseconds);
+                        //}
 
-                        long ID = CheckItemAlreadyExists(clientContext, sharepoint_Login, securePassword, project_id);
-                        if (ID > 0)
-                        {
-                            ListItem myItem = myList.GetItemById(ID.ToString());
-                            myItem["Title"] = sd.id;
-                            myItem["user_id"] = sd.user_id;
-                            myItem["jobcode_id"] = sd.jobcode_id;
-                            myItem["project_id"] = project_id;
-                            myItem["Duration"] = duration;
+                        //long ID = CheckItemAlreadyExists(clientContext, sharepoint_Login, securePassword, project_id);
+                        //if (ID > 0)
+                        //{
+                        //    ListItem myItem = myList.GetItemById(ID.ToString());
+                        //    myItem["Title"] = sd.id;
+                        //    myItem["user_id"] = sd.user_id;
+                        //    myItem["jobcode_id"] = sd.jobcode_id;
+                        //    myItem["project_id"] = project_id;
+                        //    myItem["Duration"] = duration;
 
-                            myItem.Update();
-                            clientContext.ExecuteQuery();
-                        }
-                        else
-                        {
-                            ListItemCreationInformation itemInfo = new ListItemCreationInformation();
-                            ListItem myItem = myList.AddItem(itemInfo);
-                            myItem["Title"] = sd.id;
-                            myItem["user_id"] = sd.user_id;
-                            myItem["jobcode_id"] = sd.jobcode_id;
-                            myItem["project_id"] = project_id;
-                            myItem["Duration"] = duration;
-                            try
-                            {
-                                myItem.Update();
-                                var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
-                                clientContext.Credentials = onlineCredentials;
-                                clientContext.ExecuteQuery();
-                                Console.WriteLine("Item Inserted Successfully project_id: " + project_id);
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine(e.Message);
-                            }
-                        }
+                        //    myItem.Update();
+                        //    clientContext.ExecuteQuery();
+                        //}
+                        //else
+                        //{
+                        //    ListItemCreationInformation itemInfo = new ListItemCreationInformation();
+                        //    ListItem myItem = myList.AddItem(itemInfo);
+                        //    myItem["Title"] = sd.id;
+                        //    myItem["user_id"] = sd.user_id;
+                        //    myItem["jobcode_id"] = sd.jobcode_id;
+                        //    myItem["project_id"] = project_id;
+                        //    myItem["Duration"] = duration;
+                        //    try
+                        //    {
+                        //        myItem.Update();
+                        //        var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
+                        //        clientContext.Credentials = onlineCredentials;
+                        //        clientContext.ExecuteQuery();
+                        //        Console.WriteLine("Item Inserted Successfully project_id: " + project_id);
+                        //    }
+                        //    catch (Exception e)
+                        //    {
+                        //        Console.WriteLine(e.Message);
+                        //    }
+                        //}
+
+                        #endregion
+
+                        string taskName = spItem.Select(x => x.name).FirstOrDefault();
 
                         //NOTE: Logic for upating PMP sites milestones.
-                        GetPMPSitesAndSubSiteTasks(project_id);
+                        GetPMPSitesAndSubSiteTasks(project_id, taskName, allTimeSheetData, spItem);
                     }
                 }
             }
@@ -189,7 +215,7 @@ namespace TSheetIntegration
             return ID;
         }
 
-        public static void GetPMPSitesAndSubSiteTasks(long project_id)
+        public static void GetPMPSitesAndSubSiteTasks(long project_id, string taskName, List<AllTimeSheetData> allTimeSheetData, List<SupplementalData> spItem)
         {
             string siteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
             ClientContext clientContext = new ClientContext(siteUrl);
@@ -221,17 +247,16 @@ namespace TSheetIntegration
                     string subSiteURL = ((Microsoft.SharePoint.Client.FieldUrlValue)oListItem["SiteURL"]).Url;
 
                     //NOTE: Get Sub Site Tasks items.
-                    GetPMPSubSiteTaskLists(subSiteURL, sharepoint_Login, securePassword);
+                    GetPMPSubSiteTaskLists(subSiteURL, sharepoint_Login, securePassword, taskName, allTimeSheetData, spItem);
                 }
             }
         }
 
-        public static void GetPMPSubSiteTaskLists(string siteUrl, string sharepoint_Login, SecureString securePassword)
+        public static void GetPMPSubSiteTaskLists(string siteUrl, string sharepoint_Login, SecureString securePassword, string taskName, List<AllTimeSheetData> allTimeSheetData, List<SupplementalData> spItem)
         {
             ClientContext clientContext = new ClientContext(siteUrl);
 
-            long ID = 0;
-            List oList = clientContext.Web.Lists.GetByTitle("Schedule");
+            List oList = clientContext.Web.Lists.GetByTitle("Tasks");
 
             CamlQuery camlQuery = new CamlQuery();
             ListItemCollection collListItem = oList.GetItems(camlQuery);
@@ -242,14 +267,89 @@ namespace TSheetIntegration
             clientContext.Credentials = onlineCredentials;
             clientContext.ExecuteQuery();
 
+            var groupItem = allTimeSheetData.Where(x => x.jobcode_id == spItem.Select(y => y.id).FirstOrDefault()).GroupBy(x => x.id);
+
+            long installation = 0; long projectManagement = 0; long fabrication = 0; long preProduction = 0;
+            string installationVal = string.Empty; string projectManagementVal = string.Empty;
+            string fabricationVal = string.Empty; string preProductionVal = string.Empty;
+
+            foreach (var item in groupItem)
+            {
+                foreach (var it in item)
+                {
+                    if (it.customfields.SecondColumn == "Installation")
+                    {
+                        installation = installation + Convert.ToInt64(it.duration);
+                    }
+                    else if (it.customfields.SecondColumn == "Project Management")
+                    {
+                        projectManagement = projectManagement + Convert.ToInt64(it.duration);
+                    }
+                    else if (it.customfields.SecondColumn == "Fabrication")
+                    {
+                        fabrication = fabrication + Convert.ToInt64(it.duration);
+                    }
+                    else if (it.customfields.SecondColumn == "Pre Production")
+                    {
+                        preProduction = preProduction + Convert.ToInt64(it.duration);
+                    }
+                }
+            }
+
+            TimeSpan duration = new TimeSpan();
+            duration = TimeSpan.FromSeconds(Convert.ToInt64(installation));
+            installationVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                            duration.Hours,
+                            duration.Minutes,
+                            duration.Seconds,
+                            duration.Milliseconds);
+
+            duration = new TimeSpan();
+            duration = TimeSpan.FromSeconds(Convert.ToInt64(projectManagement));
+            projectManagementVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                            duration.Hours,
+                            duration.Minutes,
+                            duration.Seconds,
+                            duration.Milliseconds);
+
+            duration = new TimeSpan();
+            duration = TimeSpan.FromSeconds(Convert.ToInt64(fabrication));
+            fabricationVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                            duration.Hours,
+                            duration.Minutes,
+                            duration.Seconds,
+                            duration.Milliseconds);
+
+            duration = new TimeSpan();
+            duration = TimeSpan.FromSeconds(Convert.ToInt64(preProduction));
+            preProductionVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                            duration.Hours,
+                            duration.Minutes,
+                            duration.Seconds,
+                            duration.Milliseconds);
+
             foreach (ListItem oListItem in collListItem)
             {
-                //if (project_id == Convert.ToInt64(oListItem["ProjID"]))
-                //{
-                //    string siteURL = ((Microsoft.SharePoint.Client.FieldUrlValue)oListItem["SiteURL"]).Url;
-                //    GetPMPSubSiteTaskLists(siteURL);
-                //}
-                //Console.WriteLine("ID: {0} \nTitle: {1} \nBody: {2}", oListItem.Id, oListItem["project_id"], oListItem["Body"]);
+                if (oListItem.Client_Title == taskName)
+                {
+                    ListItemCreationInformation itemInfo = new ListItemCreationInformation();
+                    ListItem myItem = oList.AddItem(itemInfo);
+                    myItem["3DActual_x0020_Install"] = installationVal;
+                    myItem["3DActual_x0020_Project_x0020_Manag"] = projectManagementVal;
+                    myItem["3DActual_x0020_Fabrication"] = fabricationVal;
+                    myItem["3DActual_x0020_Pre_x0020_Productio"] = preProductionVal;
+                    try
+                    {
+                        myItem.Update();
+                        clientContext.Credentials = onlineCredentials;
+                        //clientContext.ExecuteQuery();
+                        Console.WriteLine("Item Updated Successfully name: " + taskName);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
+                }
             }
         }
 

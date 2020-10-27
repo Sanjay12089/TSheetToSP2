@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,6 +28,7 @@ namespace TSheetIntegration
         public string on_the_clock { get; set; }
         public string locked { get; set; }
         public string notes { get; set; }
+        public CustomFields customfields { get; set; }
         public string last_modified { get; set; }
         public byte[] attached_files { get; set; }
         public string created_by_user_id { get; set; }
@@ -50,5 +52,19 @@ namespace TSheetIntegration
         //public byte[] locations { get; set; }
         public long geofence_config_id { get; set; }
         public long project_id { get; set; }
+    }
+
+    public class CustomFields
+    {
+        [Column("32318")]
+        public string FirstColumn { get; set; }
+        [Column("78682")]
+        public string SecondColumn { get; set; }
+        [Column("32316")]
+        public string ThirdColumn { get; set; }
+        [Column("78928")]
+        public string FourthColumn { get; set; }
+        [Column("75755")]
+        public string FifthColumn { get; set; }
     }
 }
