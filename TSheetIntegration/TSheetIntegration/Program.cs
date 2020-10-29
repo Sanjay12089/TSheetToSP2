@@ -125,7 +125,7 @@ namespace TSheetIntegration
                     {
                         List<AllTimeSheetData> allMilestoneItems = allTimeSheetData.Where(x => x.jobcode_id == spChildItem.id).ToList();
                         long project_id = sd.id;
-                        string taskName = sd.name;
+                        string taskName = spChildItem.name;
 
                         //NOTE: Logic for upating PMP sites milestones.
                         GetPMPSitesAndSubSiteTasks(project_id, taskName, allMilestoneItems, sd);
@@ -312,7 +312,7 @@ namespace TSheetIntegration
 
             TimeSpan duration = new TimeSpan();
             duration = TimeSpan.FromSeconds(Convert.ToInt64(installation));
-            installationVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+            installationVal = string.Format("{0:D2}.{1:D2}",
                             duration.Hours,
                             duration.Minutes,
                             duration.Seconds,
@@ -320,7 +320,7 @@ namespace TSheetIntegration
 
             duration = new TimeSpan();
             duration = TimeSpan.FromSeconds(Convert.ToInt64(projectManagement));
-            projectManagementVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+            projectManagementVal = string.Format("{0:D2}.{1:D2}",
                             duration.Hours,
                             duration.Minutes,
                             duration.Seconds,
@@ -328,7 +328,7 @@ namespace TSheetIntegration
 
             duration = new TimeSpan();
             duration = TimeSpan.FromSeconds(Convert.ToInt64(fabrication));
-            fabricationVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+            fabricationVal = string.Format("{0:D2}.{1:D2}",
                             duration.Hours,
                             duration.Minutes,
                             duration.Seconds,
@@ -336,7 +336,7 @@ namespace TSheetIntegration
 
             duration = new TimeSpan();
             duration = TimeSpan.FromSeconds(Convert.ToInt64(preProduction));
-            preProductionVal = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+            preProductionVal = string.Format("{0:D2}",
                             duration.Hours,
                             duration.Minutes,
                             duration.Seconds,
@@ -344,10 +344,10 @@ namespace TSheetIntegration
 
             foreach (ListItem oListItem in collListItem)
             {
-                if (oListItem["Title"] == taskName)
+                if (Convert.ToString(oListItem["Title"]) == taskName)
                 {
                     ListItemCreationInformation itemInfo = new ListItemCreationInformation();
-                    ListItem myItem = oList.AddItem(itemInfo);
+                    ListItem myItem = oList.GetItemById(Convert.ToString(oListItem["ID"]));
                     myItem["Actual_x0020_Install"] = installationVal;
                     myItem["Actual_x0020_Project_x0020_Manag"] = projectManagementVal;
                     myItem["Actual_x0020_Fabrication"] = fabricationVal;
@@ -356,7 +356,7 @@ namespace TSheetIntegration
                     {
                         myItem.Update();
                         clientContext.Credentials = onlineCredentials;
-                        //clientContext.ExecuteQuery();
+                        clientContext.ExecuteQuery();
                         Console.WriteLine("Item Updated Successfully name: " + taskName);
                     }
                     catch (Exception e)
