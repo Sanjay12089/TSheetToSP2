@@ -63,6 +63,9 @@ namespace TSheetIntegration
 
         public static void getProjects()
         {
+            // start by requesting the first page
+            int currentPage = 1;
+
             var url = "https://rest.tsheets.com/api/v1/reports/project";
 
             var tsheetsApi = new RestClient(_connection, _authProvider);
@@ -71,41 +74,54 @@ namespace TSheetIntegration
             filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
             //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
             filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
-            var timesheetData = tsheetsApi.Get(ObjectType.Timesheets, filters);
-            var timesheetsObject = JObject.Parse(timesheetData);
-            var allTimeSheets = timesheetsObject.SelectTokens("results.timesheets.*");
-            var supplemental_data = timesheetsObject.SelectTokens("supplemental_data.jobcodes.*");
+            filters["per_page"] = "10";
 
             List<AllTimeSheetData> allTimeSheetData = new List<AllTimeSheetData>();
             List<SupplementalData> supplementalData = new List<SupplementalData>();
 
-            //NOTE: Fetch all timesheet data
-            int count = 0;
-            foreach (var timesheet in allTimeSheets)
+            bool moreData = true;
+            while (moreData)
             {
-                allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
-                int cs = 0;
-                foreach (var item in timesheet["customfields"])
-                {
-                    if (cs == 0)
-                        allTimeSheetData[count].customfields.FirstColumn = item.First.ToString();
-                    if (cs == 1)
-                        allTimeSheetData[count].customfields.SecondColumn = item.First.ToString();
-                    if (cs == 2)
-                        allTimeSheetData[count].customfields.ThirdColumn = item.First.ToString();
-                    if (cs == 3)
-                        allTimeSheetData[count].customfields.FourthColumn = item.First.ToString();
-                    if (cs == 4)
-                        allTimeSheetData[count].customfields.FifthColumn = item.First.ToString();
-                    cs++;
-                }
-                count++;
-            }
+                filters["page"] = currentPage.ToString();
+                var timesheetData = tsheetsApi.Get(ObjectType.Timesheets, filters);
+                var timesheetsObject = JObject.Parse(timesheetData);
+                var allTimeSheets = timesheetsObject.SelectTokens("results.timesheets.*");
+                var supplemental_data = timesheetsObject.SelectTokens("supplemental_data.jobcodes.*");
 
-            //NOTE: Fetch all supplement data
-            foreach (var supplemental in supplemental_data)
-            {
-                supplementalData.Add(JsonConvert.DeserializeObject<SupplementalData>(supplemental.ToString()));
+                // see if we have more pages to retrieve
+                moreData = bool.Parse(timesheetsObject.SelectToken("more").ToString());
+
+                // increment to the next page
+                currentPage++;
+
+                //NOTE: Fetch all timesheet data
+                int count = 0;
+                foreach (var timesheet in allTimeSheets)
+                {
+                    allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
+                    int cs = 0;
+                    foreach (var item in timesheet["customfields"])
+                    {
+                        if (cs == 0)
+                            allTimeSheetData[count].customfields.FirstColumn = item.First.ToString();
+                        if (cs == 1)
+                            allTimeSheetData[count].customfields.SecondColumn = item.First.ToString();
+                        if (cs == 2)
+                            allTimeSheetData[count].customfields.ThirdColumn = item.First.ToString();
+                        if (cs == 3)
+                            allTimeSheetData[count].customfields.FourthColumn = item.First.ToString();
+                        if (cs == 4)
+                            allTimeSheetData[count].customfields.FifthColumn = item.First.ToString();
+                        cs++;
+                    }
+                    count++;
+                }
+
+                //NOTE: Fetch all supplement data
+                foreach (var supplemental in supplemental_data)
+                {
+                    supplementalData.Add(JsonConvert.DeserializeObject<SupplementalData>(supplemental.ToString()));
+                }
             }
 
             string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login");
@@ -336,7 +352,7 @@ namespace TSheetIntegration
 
             duration = new TimeSpan();
             duration = TimeSpan.FromSeconds(Convert.ToInt64(preProduction));
-            preProductionVal = string.Format("{0:D2}",
+            preProductionVal = string.Format("{0:D2}.{1:D2}",
                             duration.Hours,
                             duration.Minutes,
                             duration.Seconds,
