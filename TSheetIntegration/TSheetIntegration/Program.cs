@@ -124,18 +124,66 @@ namespace TSheetIntegration
                 }
             }
 
-            string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login");
-            string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password");
-            var securePassword = new SecureString();
-            foreach (char c in sharepoint_Password)
-            {
-                securePassword.AppendChar(c);
-            }
-
+            List<string> projectNames = new List<string>();
             foreach (var sd in supplementalData)
             {
                 if (sd.parent_id == 0)
                 {
+                    #region "Updating Project ID in LL Internal Tasks List"
+
+                    if (sd.name.Substring(0, 5).StartsWith("LL"))
+                    {
+                        string name = sd.name.Substring(0, 5);
+                        if (!projectNames.Contains(name))
+                        {
+                            projectNames.Add(name);
+                            string PMPSiteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
+                            ClientContext clientContext = new ClientContext(PMPSiteUrl);
+
+                            List oList = clientContext.Web.Lists.GetByTitle("LL Projects List");
+
+                            CamlQuery camlQuery = new CamlQuery();
+                            ListItemCollection collListItem = oList.GetItems(camlQuery);
+
+                            clientContext.Load(collListItem);
+
+                            string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login_PMP");
+                            string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password_PMP");
+                            var securePassword = new SecureString();
+                            foreach (char c in sharepoint_Password)
+                            {
+                                securePassword.AppendChar(c);
+                            }
+
+                            var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
+                            clientContext.Credentials = onlineCredentials;
+                            clientContext.ExecuteQuery();
+
+                            foreach (ListItem oListItem in collListItem)
+                            {
+                                if (name == Convert.ToString(oListItem["ProjectNumber"]))
+                                {
+                                    //NOTE: Update Project ID in list.
+                                    ListItem myItem = oList.GetItemById(Convert.ToString(oListItem["ID"]));
+                                    myItem["ProjID"] = sd.id;
+                                    try
+                                    {
+                                        myItem.Update();
+                                        clientContext.Credentials = onlineCredentials;
+                                        clientContext.ExecuteQuery();
+                                        Console.WriteLine("Project ID Successfully Update on: " + name);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Console.WriteLine(e.Message);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    #endregion
+
                     List<SupplementalData> spChildItems = supplementalData.Where(x => x.parent_id == sd.id).ToList();
                     foreach (var spChildItem in spChildItems)
                     {
@@ -158,6 +206,14 @@ namespace TSheetIntegration
             //        if (project_id > 0)
             //        {
             #region trial tenant list
+
+            //string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login");
+            //string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password");
+            //var securePassword = new SecureString();
+            //foreach (char c in sharepoint_Password)
+            //{
+            //    securePassword.AppendChar(c);
+            //}
 
             //string siteUrl = ConfigurationManager.AppSettings.Get("sharepoint_SiteUrl");
             //ClientContext clientContext = new ClientContext(siteUrl);
@@ -253,7 +309,6 @@ namespace TSheetIntegration
             string siteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
             ClientContext clientContext = new ClientContext(siteUrl);
 
-            long ID = 0;
             List oList = clientContext.Web.Lists.GetByTitle("LL Projects List");
 
             CamlQuery camlQuery = new CamlQuery();
