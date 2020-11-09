@@ -27,6 +27,7 @@ namespace TSheetIntegration
         private static string _redirectUri;
         private static string _clientSecret;
         private static string _manualToken;
+        private static int count = 0;
         static void Main(string[] args)
         {
             // _clientId, _redirectUri, and _clientSecret are needed by the API to connect to your
@@ -74,7 +75,7 @@ namespace TSheetIntegration
             filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
             //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
             filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
-            filters["per_page"] = "10";
+            filters["per_page"] = "50";
 
             List<AllTimeSheetData> allTimeSheetData = new List<AllTimeSheetData>();
             List<SupplementalData> supplementalData = new List<SupplementalData>();
@@ -95,7 +96,6 @@ namespace TSheetIntegration
                 currentPage++;
 
                 //NOTE: Fetch all timesheet data
-                int count = 0;
                 foreach (var timesheet in allTimeSheets)
                 {
                     allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
