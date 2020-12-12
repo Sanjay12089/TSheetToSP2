@@ -30,7 +30,7 @@ namespace TSheetIntegration
         public string notes { get; set; }
         public CustomFields customfields { get; set; }
         public string last_modified { get; set; }
-        public byte[] attached_files { get; set; }
+        //public byte[] attached_files { get; set; }
         public string created_by_user_id { get; set; }
     }
 
@@ -52,6 +52,12 @@ namespace TSheetIntegration
         //public byte[] locations { get; set; }
         public long geofence_config_id { get; set; }
         public long project_id { get; set; }
+    }
+
+    public class MilestoneData
+    {
+        public long id { get; set; }
+        public string name { get; set; }
     }
 
     public class CustomFields

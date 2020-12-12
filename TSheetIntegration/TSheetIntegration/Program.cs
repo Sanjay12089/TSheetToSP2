@@ -49,7 +49,8 @@ namespace TSheetIntegration
             _connection = new ConnectionInfo(_baseUri, _clientId, _redirectUri, _clientSecret);
 
             AuthenticateWithManualToken();
-            getProjects();
+            //getProjects();
+            GetAllJobCodeIdForProjectId();
         }
 
         /// <summary>
@@ -62,40 +63,45 @@ namespace TSheetIntegration
             _authProvider = new StaticAuthentication(_manualToken);
         }
 
-        public static void getProjects()
+        public static void GetAllJobCodeIdForProjectId()
         {
-            // start by requesting the first page
-            int currentPage = 1;
-
-            var url = "https://rest.tsheets.com/api/v1/reports/project";
-
+            long projectId = 56135257;
             var tsheetsApi = new RestClient(_connection, _authProvider);
-
             var filters = new Dictionary<string, string>();
-            filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
-            //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
-            filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
-            filters["per_page"] = "50";
+            filters.Add("parent_ids", projectId.ToString());
 
-            List<AllTimeSheetData> allTimeSheetData = new List<AllTimeSheetData>();
-            List<SupplementalData> supplementalData = new List<SupplementalData>();
+            var milestoneData = tsheetsApi.Get(ObjectType.Jobcodes, filters);
+            var milestoneDataObj = JObject.Parse(milestoneData);
+            var ienumJCData = milestoneDataObj.SelectTokens("results.jobcodes.*");
+            List<MilestoneData> allMilestoneData = new List<MilestoneData>();
+            foreach (var ie in ienumJCData)
+            {
+                allMilestoneData.Add(JsonConvert.DeserializeObject<MilestoneData>(ie.ToString()));
+            }
 
+            foreach (var msData in allMilestoneData)
+            {
+                GetAllTimeSheetDataForJobCodeId(projectId, msData.id, msData.name, tsheetsApi);
+            }
+        }
+
+        public static void GetAllTimeSheetDataForJobCodeId(long projectId, long jobCodeId, string taskName, RestClient tsheetsApi)
+        {
+            int currentPage = 1;
             bool moreData = true;
+            List<AllTimeSheetData> allTimeSheetData = new List<AllTimeSheetData>();
             while (moreData)
             {
+                var filters = new Dictionary<string, string>();
+                filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
+                //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
+                filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
+                filters.Add("jobcode_ids", jobCodeId.ToString());
+                filters["per_page"] = "50";
                 filters["page"] = currentPage.ToString();
                 var timesheetData = tsheetsApi.Get(ObjectType.Timesheets, filters);
                 var timesheetsObject = JObject.Parse(timesheetData);
                 var allTimeSheets = timesheetsObject.SelectTokens("results.timesheets.*");
-                var supplemental_data = timesheetsObject.SelectTokens("supplemental_data.jobcodes.*");
-
-                // see if we have more pages to retrieve
-                moreData = bool.Parse(timesheetsObject.SelectToken("more").ToString());
-
-                // increment to the next page
-                currentPage++;
-
-                //NOTE: Fetch all timesheet data
                 foreach (var timesheet in allTimeSheets)
                 {
                     allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
@@ -117,194 +123,17 @@ namespace TSheetIntegration
                     count++;
                 }
 
-                //NOTE: Fetch all supplement data
-                foreach (var supplemental in supplemental_data)
-                {
-                    supplementalData.Add(JsonConvert.DeserializeObject<SupplementalData>(supplemental.ToString()));
-                }
+                // see if we have more pages to retrieve
+                moreData = bool.Parse(timesheetsObject.SelectToken("more").ToString());
+
+                // increment to the next page
+                currentPage++;
             }
-
-            List<string> projectNames = new List<string>();
-            foreach (var sd in supplementalData)
-            {
-                if (sd.parent_id == 0)
-                {
-                    #region "Updating Project ID in LL Internal Tasks List"
-
-                    if (sd.name.Substring(0, 5).StartsWith("LL"))
-                    {
-                        string name = sd.name.Substring(0, 5);
-                        if (!projectNames.Contains(name))
-                        {
-                            projectNames.Add(name);
-                            string PMPSiteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
-                            ClientContext clientContext = new ClientContext(PMPSiteUrl);
-
-                            List oList = clientContext.Web.Lists.GetByTitle("LL Projects List");
-
-                            CamlQuery camlQuery = new CamlQuery();
-                            ListItemCollection collListItem = oList.GetItems(camlQuery);
-
-                            clientContext.Load(collListItem);
-
-                            string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login_PMP");
-                            string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password_PMP");
-                            var securePassword = new SecureString();
-                            foreach (char c in sharepoint_Password)
-                            {
-                                securePassword.AppendChar(c);
-                            }
-
-                            var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
-                            clientContext.Credentials = onlineCredentials;
-                            clientContext.ExecuteQuery();
-
-                            foreach (ListItem oListItem in collListItem)
-                            {
-                                if (name == Convert.ToString(oListItem["ProjectNumber"]))
-                                {
-                                    //NOTE: Update Project ID in list.
-                                    ListItem myItem = oList.GetItemById(Convert.ToString(oListItem["ID"]));
-                                    myItem["ProjID"] = sd.id;
-                                    try
-                                    {
-                                        myItem.Update();
-                                        clientContext.Credentials = onlineCredentials;
-                                        clientContext.ExecuteQuery();
-                                        Console.WriteLine("Project ID Successfully Update on: " + name);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Console.WriteLine(e.Message);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    #endregion
-
-                    List<SupplementalData> spChildItems = supplementalData.Where(x => x.parent_id == sd.id).ToList();
-                    foreach (var spChildItem in spChildItems)
-                    {
-                        List<AllTimeSheetData> allMilestoneItems = allTimeSheetData.Where(x => x.jobcode_id == spChildItem.id).ToList();
-                        long project_id = sd.id;
-                        string taskName = spChildItem.name;
-
-                        //NOTE: Logic for upating PMP sites milestones.
-                        GetPMPSitesAndSubSiteTasks(project_id, taskName, allMilestoneItems, sd);
-                    }
-                }
-            }
-
-            //foreach (var td in allTimeSheetData)
-            //{
-            //    List<SupplementalData> spItem = supplementalData.Where(x => x.id == td.jobcode_id).ToList();
-            //    if (spItem.Count > 0)
-            //    {
-            //        long project_id = supplementalData.Where(x => x.id == td.jobcode_id).Select(x => x.project_id).FirstOrDefault();
-            //        if (project_id > 0)
-            //        {
-            #region trial tenant list
-
-            //string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login");
-            //string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password");
-            //var securePassword = new SecureString();
-            //foreach (char c in sharepoint_Password)
-            //{
-            //    securePassword.AppendChar(c);
-            //}
-
-            //string siteUrl = ConfigurationManager.AppSettings.Get("sharepoint_SiteUrl");
-            //ClientContext clientContext = new ClientContext(siteUrl);
-            //List myList = clientContext.Web.Lists.GetByTitle(ConfigurationManager.AppSettings.Get("sharepoint_ListName"));
-
-            //NOTE: Check if project id is available in list
-            //TimeSpan duration = new TimeSpan();
-            //if (!string.IsNullOrWhiteSpace(sd.duration))
-            //{
-            //    duration = TimeSpan.FromSeconds(Convert.ToInt64(sd.duration));
-
-            //    string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-            //                    duration.Hours,
-            //                    duration.Minutes,
-            //                    duration.Seconds,
-            //                    duration.Milliseconds);
-            //}
-
-            //long ID = CheckItemAlreadyExists(clientContext, sharepoint_Login, securePassword, project_id);
-            //if (ID > 0)
-            //{
-            //    ListItem myItem = myList.GetItemById(ID.ToString());
-            //    myItem["Title"] = sd.id;
-            //    myItem["user_id"] = sd.user_id;
-            //    myItem["jobcode_id"] = sd.jobcode_id;
-            //    myItem["project_id"] = project_id;
-            //    myItem["Duration"] = duration;
-
-            //    myItem.Update();
-            //    clientContext.ExecuteQuery();
-            //}
-            //else
-            //{
-            //    ListItemCreationInformation itemInfo = new ListItemCreationInformation();
-            //    ListItem myItem = myList.AddItem(itemInfo);
-            //    myItem["Title"] = sd.id;
-            //    myItem["user_id"] = sd.user_id;
-            //    myItem["jobcode_id"] = sd.jobcode_id;
-            //    myItem["project_id"] = project_id;
-            //    myItem["Duration"] = duration;
-            //    try
-            //    {
-            //        myItem.Update();
-            //        var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
-            //        clientContext.Credentials = onlineCredentials;
-            //        clientContext.ExecuteQuery();
-            //        Console.WriteLine("Item Inserted Successfully project_id: " + project_id);
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Console.WriteLine(e.Message);
-            //    }
-            //}
-
-            #endregion
-
-            //            string taskName = spItem.Select(x => x.name).FirstOrDefault();
-
-            //            //NOTE: Logic for upating PMP sites milestones.
-            //            GetPMPSitesAndSubSiteTasks(project_id, taskName, allTimeSheetData, spItem);
-            //        }
-            //    }
-            //}
+            GetPMPSitesAndSubSiteURL(projectId, taskName, allTimeSheetData);
+            count = 0;
         }
 
-        public static long CheckItemAlreadyExists(ClientContext clientContext, string sharepoint_Login, SecureString securePassword, long project_id)
-        {
-            long ID = 0;
-            List oList = clientContext.Web.Lists.GetByTitle(ConfigurationManager.AppSettings.Get("sharepoint_ListName"));
-
-            CamlQuery camlQuery = new CamlQuery();
-            ListItemCollection collListItem = oList.GetItems(camlQuery);
-
-            clientContext.Load(collListItem);
-
-            var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
-            clientContext.Credentials = onlineCredentials;
-            clientContext.ExecuteQuery();
-
-            foreach (ListItem oListItem in collListItem)
-            {
-                if (project_id == Convert.ToInt64(oListItem["project_id"]))
-                {
-                    return oListItem.Id;
-                }
-                //Console.WriteLine("ID: {0} \nTitle: {1} \nBody: {2}", oListItem.Id, oListItem["project_id"], oListItem["Body"]);
-            }
-            return ID;
-        }
-
-        public static void GetPMPSitesAndSubSiteTasks(long project_id, string taskName, List<AllTimeSheetData> allMilestoneItems, SupplementalData sd)
+        public static void GetPMPSitesAndSubSiteURL(long project_id, string taskName, List<AllTimeSheetData> allMilestoneItems)
         {
             string siteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
             ClientContext clientContext = new ClientContext(siteUrl);
@@ -335,12 +164,12 @@ namespace TSheetIntegration
                     string subSiteURL = ((Microsoft.SharePoint.Client.FieldUrlValue)oListItem["SiteURL"]).Url;
 
                     //NOTE: Get Sub Site Tasks items.
-                    GetPMPSubSiteTaskLists(subSiteURL, sharepoint_Login, securePassword, taskName, allMilestoneItems, sd);
+                    GetAndSetDurationOnPMPSubSiteTaskLists(subSiteURL, sharepoint_Login, securePassword, taskName, allMilestoneItems);
                 }
             }
         }
-
-        public static void GetPMPSubSiteTaskLists(string siteUrl, string sharepoint_Login, SecureString securePassword, string taskName, List<AllTimeSheetData> allMilestoneItems, SupplementalData sd)
+        
+        public static void GetAndSetDurationOnPMPSubSiteTaskLists(string siteUrl, string sharepoint_Login, SecureString securePassword, string taskName, List<AllTimeSheetData> allMilestoneItems)
         {
             ClientContext clientContext = new ClientContext(siteUrl);
 
@@ -357,9 +186,9 @@ namespace TSheetIntegration
 
             //var groupItem = allTimeSheetData.Where(x => x.jobcode_id == spItem.Select(y => y.id).FirstOrDefault()).GroupBy(x => x.id);
 
-            long installation = 0; long projectManagement = 0; long fabrication = 0; long preProduction = 0;
-            string installationVal = string.Empty; string projectManagementVal = string.Empty;
-            string fabricationVal = string.Empty; string preProductionVal = string.Empty;
+            float installation = 0; float projectManagement = 0; float fabrication = 0; float preProduction = 0;
+            float installationVal = 0; float projectManagementVal = 0;
+            float fabricationVal = 0; float preProductionVal = 0;
 
             foreach (var item in allMilestoneItems)
             {
@@ -381,37 +210,17 @@ namespace TSheetIntegration
                 }
             }
 
-            TimeSpan duration = new TimeSpan();
-            duration = TimeSpan.FromSeconds(Convert.ToInt64(installation));
-            installationVal = string.Format("{0:D2}.{1:D2}",
-                            duration.Hours,
-                            duration.Minutes,
-                            duration.Seconds,
-                            duration.Milliseconds);
+            float installhours = (float)System.Math.Round(installation / 3600, 2); 
+            installationVal = installhours;
 
-            duration = new TimeSpan();
-            duration = TimeSpan.FromSeconds(Convert.ToInt64(projectManagement));
-            projectManagementVal = string.Format("{0:D2}.{1:D2}",
-                            duration.Hours,
-                            duration.Minutes,
-                            duration.Seconds,
-                            duration.Milliseconds);
+            float projectMhours = (float)System.Math.Round(projectManagement / 3600, 2);
+            projectManagementVal = projectMhours;
 
-            duration = new TimeSpan();
-            duration = TimeSpan.FromSeconds(Convert.ToInt64(fabrication));
-            fabricationVal = string.Format("{0:D2}.{1:D2}",
-                            duration.Hours,
-                            duration.Minutes,
-                            duration.Seconds,
-                            duration.Milliseconds);
+            float fabhours = (float)System.Math.Round(fabrication / 3600, 2);
+            fabricationVal = fabhours;
 
-            duration = new TimeSpan();
-            duration = TimeSpan.FromSeconds(Convert.ToInt64(preProduction));
-            preProductionVal = string.Format("{0:D2}.{1:D2}",
-                            duration.Hours,
-                            duration.Minutes,
-                            duration.Seconds,
-                            duration.Milliseconds);
+            float prePhours = (float)System.Math.Round(preProduction / 3600, 2);
+            preProductionVal = prePhours;
 
             foreach (ListItem oListItem in collListItem)
             {
@@ -437,6 +246,5 @@ namespace TSheetIntegration
                 }
             }
         }
-
     }
 }
