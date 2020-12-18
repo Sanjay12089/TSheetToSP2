@@ -50,7 +50,7 @@ namespace TSheetIntegration
 
             AuthenticateWithManualToken();
             //getProjects();
-            GetAllJobCodeIdForProjectId();
+            GetAllProjectIdForProjectId();
         }
 
         /// <summary>
@@ -63,9 +63,98 @@ namespace TSheetIntegration
             _authProvider = new StaticAuthentication(_manualToken);
         }
 
-        public static void GetAllJobCodeIdForProjectId()
+        public static void GetAllProjectIdForProjectId()
         {
-            long projectId = 56135257;
+            int currentPage = 1;
+            bool moreData = true;
+            List<string> projectNames = new List<string>();
+            List<Projects> projects = new List<Projects>();
+            var tsheetsApi = new RestClient(_connection, _authProvider);
+            while (moreData)
+            {
+                var filters = new Dictionary<string, string>();
+                filters.Add("parent_ids", "0");
+                filters["per_page"] = "50";
+                filters["page"] = currentPage.ToString();
+
+                var projectData = tsheetsApi.Get(ObjectType.Jobcodes, filters);
+                var projectDataObj = JObject.Parse(projectData);
+                var ienumProjectData = projectDataObj.SelectTokens("results.jobcodes.*");
+                foreach (var ie in ienumProjectData)
+                {
+                    projects.Add(JsonConvert.DeserializeObject<Projects>(ie.ToString()));
+                }
+                // see if we have more pages to retrieve
+                moreData = bool.Parse(projectDataObj.SelectToken("more").ToString());
+
+                // increment to the next page
+                currentPage++;
+            }
+
+            //NOTE: Get all the projects lists
+            string PMPSiteUrl = "https://leonlebeniste.sharepoint.com/sites/PMP";
+            ClientContext clientContext = new ClientContext(PMPSiteUrl);
+
+            List oList = clientContext.Web.Lists.GetByTitle("LL Projects List");
+
+            CamlQuery camlQuery = new CamlQuery();
+            ListItemCollection collListItem = oList.GetItems(camlQuery);
+
+            clientContext.Load(collListItem);
+
+            string sharepoint_Login = ConfigurationManager.AppSettings.Get("sharepoint_Login_PMP");
+            string sharepoint_Password = ConfigurationManager.AppSettings.Get("sharepoint_Password_PMP");
+            var securePassword = new SecureString();
+            foreach (char c in sharepoint_Password)
+            {
+                securePassword.AppendChar(c);
+            }
+
+            var onlineCredentials = new SharePointOnlineCredentials(sharepoint_Login, securePassword);
+            clientContext.Credentials = onlineCredentials;
+            clientContext.ExecuteQuery();
+
+            foreach (var project in projects)
+            {
+                //NOTE: Process updating project id
+
+                string projectName = project.name.Substring(0, 5);
+                if (!projectNames.Contains(projectName))
+                {
+                    projectNames.Add(projectName);
+
+                    foreach (ListItem oListItem in collListItem)
+                    {
+                        if (projectName == Convert.ToString(oListItem["ProjectNumber"]))
+                        {
+                            if (project.id != Convert.ToInt64(oListItem["ProjID"]))
+                            {
+                                //NOTE: Update Project ID in list.
+                                ListItem myItem = oList.GetItemById(Convert.ToString(oListItem["ID"]));
+                                myItem["ProjID"] = project.id;
+                                try
+                                {
+                                    myItem.Update();
+                                    clientContext.Credentials = onlineCredentials;
+                                    clientContext.ExecuteQuery();
+                                    Console.WriteLine("Project ID Successfully Update for: " + projectName);
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(e.Message);
+                                }
+                            }
+                            //NOTE: Process updating timesheet hours.
+                            GetAllJobCodeIdForProjectId(project.id);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void GetAllJobCodeIdForProjectId(long projectId)
+        {
+            //long projectId = 56135257;
             var tsheetsApi = new RestClient(_connection, _authProvider);
             var filters = new Dictionary<string, string>();
             filters.Add("parent_ids", projectId.ToString());
@@ -168,7 +257,7 @@ namespace TSheetIntegration
                 }
             }
         }
-        
+
         public static void GetAndSetDurationOnPMPSubSiteTaskLists(string siteUrl, string sharepoint_Login, SecureString securePassword, string taskName, List<AllTimeSheetData> allMilestoneItems)
         {
             ClientContext clientContext = new ClientContext(siteUrl);
@@ -210,7 +299,7 @@ namespace TSheetIntegration
                 }
             }
 
-            float installhours = (float)System.Math.Round(installation / 3600, 2); 
+            float installhours = (float)System.Math.Round(installation / 3600, 2);
             installationVal = installhours;
 
             float projectMhours = (float)System.Math.Round(projectManagement / 3600, 2);
@@ -234,9 +323,9 @@ namespace TSheetIntegration
                     myItem["Actual_x0020_Pre_x0020_Productio"] = preProductionVal;
                     try
                     {
-                        myItem.Update();
+                        //myItem.Update();
                         clientContext.Credentials = onlineCredentials;
-                        clientContext.ExecuteQuery();
+                        //clientContext.ExecuteQuery();
                         Console.WriteLine("Item Updated Successfully name: " + taskName);
                     }
                     catch (Exception e)

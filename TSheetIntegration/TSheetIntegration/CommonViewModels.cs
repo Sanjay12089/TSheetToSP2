@@ -12,6 +12,12 @@ namespace TSheetIntegration
 
     }
 
+    public class Projects
+    {
+        public long id { get; set; }
+        public string name { get; set; }
+    }
+
     public class AllTimeSheetData
     {
         public long id { get; set; }
