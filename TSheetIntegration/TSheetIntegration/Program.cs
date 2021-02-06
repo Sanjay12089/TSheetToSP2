@@ -73,10 +73,7 @@ namespace TSheetIntegration
             while (moreData)
             {
                 var filters = new Dictionary<string, string>();
-                filters.Add("parent_ids", "0");
-                filters["per_page"] = "50";
-                filters["page"] = currentPage.ToString();
-
+                
                 var projectData = tsheetsApi.Get(ObjectType.Jobcodes, filters);
                 var projectDataObj = JObject.Parse(projectData);
                 var ienumProjectData = projectDataObj.SelectTokens("results.jobcodes.*");
@@ -134,9 +131,9 @@ namespace TSheetIntegration
                                 myItem["ProjID"] = project.id;
                                 try
                                 {
-                                    myItem.Update();
+                                    //myItem.Update();
                                     clientContext.Credentials = onlineCredentials;
-                                    clientContext.ExecuteQuery();
+                                    //clientContext.ExecuteQuery();
                                     Console.WriteLine("Project ID Successfully Update for: " + projectName);
                                 }
                                 catch (Exception e)
@@ -154,7 +151,7 @@ namespace TSheetIntegration
 
         public static void GetAllJobCodeIdForProjectId(long projectId)
         {
-            //long projectId = 56135257;
+            projectId = 56135257;
             var tsheetsApi = new RestClient(_connection, _authProvider);
             var filters = new Dictionary<string, string>();
             filters.Add("parent_ids", projectId.ToString());
