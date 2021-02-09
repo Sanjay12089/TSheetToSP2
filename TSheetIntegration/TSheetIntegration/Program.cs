@@ -73,13 +73,16 @@ namespace TSheetIntegration
             while (moreData)
             {
                 var filters = new Dictionary<string, string>();
-                
+                filters.Add("parent_ids", "0");
+                filters["per_page"] = "50";
+                filters["page"] = Convert.ToString(currentPage);
+
                 var projectData = tsheetsApi.Get(ObjectType.Jobcodes, filters);
                 var projectDataObj = JObject.Parse(projectData);
                 var ienumProjectData = projectDataObj.SelectTokens("results.jobcodes.*");
                 foreach (var ie in ienumProjectData)
                 {
-                    projects.Add(JsonConvert.DeserializeObject<Projects>(ie.ToString()));
+                    projects.Add(JsonConvert.DeserializeObject<Projects>(Convert.ToString(ie)));
                 }
                 // see if we have more pages to retrieve
                 moreData = bool.Parse(projectDataObj.SelectToken("more").ToString());
@@ -131,9 +134,9 @@ namespace TSheetIntegration
                                 myItem["ProjID"] = project.id;
                                 try
                                 {
-                                    //myItem.Update();
+                                    myItem.Update();
                                     clientContext.Credentials = onlineCredentials;
-                                    //clientContext.ExecuteQuery();
+                                    clientContext.ExecuteQuery();
                                     Console.WriteLine("Project ID Successfully Update for: " + projectName);
                                 }
                                 catch (Exception e)
@@ -151,10 +154,10 @@ namespace TSheetIntegration
 
         public static void GetAllJobCodeIdForProjectId(long projectId)
         {
-            projectId = 56135257;
+            //long projectId = 56135257;
             var tsheetsApi = new RestClient(_connection, _authProvider);
             var filters = new Dictionary<string, string>();
-            filters.Add("parent_ids", projectId.ToString());
+            filters.Add("parent_ids", Convert.ToString(projectId));
 
             var milestoneData = tsheetsApi.Get(ObjectType.Jobcodes, filters);
             var milestoneDataObj = JObject.Parse(milestoneData);
@@ -162,7 +165,7 @@ namespace TSheetIntegration
             List<MilestoneData> allMilestoneData = new List<MilestoneData>();
             foreach (var ie in ienumJCData)
             {
-                allMilestoneData.Add(JsonConvert.DeserializeObject<MilestoneData>(ie.ToString()));
+                allMilestoneData.Add(JsonConvert.DeserializeObject<MilestoneData>(Convert.ToString(ie)));
             }
 
             foreach (var msData in allMilestoneData)
@@ -182,15 +185,15 @@ namespace TSheetIntegration
                 filters.Add("start_date", ConfigurationManager.AppSettings.Get("start_date"));
                 //filters.Add("end_date", ConfigurationManager.AppSettings.Get("end_date"));
                 filters.Add("end_date", DateTime.Now.ToString("yyyy-MM-dd"));
-                filters.Add("jobcode_ids", jobCodeId.ToString());
+                filters.Add("jobcode_ids", Convert.ToString(jobCodeId));
                 filters["per_page"] = "50";
-                filters["page"] = currentPage.ToString();
+                filters["page"] = Convert.ToString(currentPage);
                 var timesheetData = tsheetsApi.Get(ObjectType.Timesheets, filters);
                 var timesheetsObject = JObject.Parse(timesheetData);
                 var allTimeSheets = timesheetsObject.SelectTokens("results.timesheets.*");
                 foreach (var timesheet in allTimeSheets)
                 {
-                    allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(timesheet.ToString()));
+                    allTimeSheetData.Add(JsonConvert.DeserializeObject<AllTimeSheetData>(Convert.ToString(timesheet)));
                     int cs = 0;
                     foreach (var item in timesheet["customfields"])
                     {
